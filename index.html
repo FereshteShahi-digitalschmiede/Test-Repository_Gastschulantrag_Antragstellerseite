@@ -457,15 +457,57 @@ h2{font-size:31px;line-height:1.2}
 .seglist li{display:grid;grid-template-columns:78px 1fr auto;gap:10px;align-items:baseline;font-size:12.5px;color:var(--ink-2)}
 .seglist .mode{font-weight:700;color:var(--blue-800)}
 .seglist .dur{font-weight:700;white-space:nowrap}
+/* Automatische Fahrzeitermittlung */
+.fz-basis{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}
+.fz-basis:empty{display:none}
+.fz-basis .fb{background:#fff;border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:12.5px;color:var(--ink-2);min-width:0}
+.fz-basis .fb b{display:block;font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:3px}
+.fz-basis .fb .src{display:inline-block;margin-top:5px;font-size:11px;font-weight:600;color:var(--green);background:#e5f4ec;border-radius:99px;padding:1px 8px}
+.fz-basis .fb .src.def{color:var(--gold);background:#fbf1de}
+.fz-missing{display:none;margin-top:14px;background:#fbf1de;border:1px solid #efd9ad;border-radius:8px;padding:14px 16px;font-size:13.5px;color:#5c4210}
+.fz-missing.on{display:block}
+.fz-missing ul{margin:6px 0 10px;padding-left:18px}
+.fz-missing .btn{margin-right:8px}
+.fz-cards{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
+.fz-card{border:1px solid var(--line);border-radius:10px;padding:16px 18px;background:#fff;min-width:0}
+.fz-card.over{border-color:#e9b9b2;background:#fffafa}
+.fz-card .fz-t{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:4px}
+.fz-card .fz-t span{font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.fz-card .fz-n{font-weight:600;font-size:14px;color:var(--ink);margin-bottom:10px;overflow-wrap:anywhere}
+.fz-badge{font-size:11.5px;font-weight:700;border-radius:99px;padding:2px 9px;white-space:nowrap}
+.fz-badge.ok{background:#e5f4ec;color:var(--green)}
+.fz-badge.no{background:#fbe4e1;color:#b23a2c}
+.fz-big{font-size:26px;font-weight:700;color:var(--blue-900);line-height:1.1}
+.fz-card.over .fz-big{color:#b23a2c}
+.fz-big small{font-size:13px;font-weight:500;color:var(--muted);margin-left:6px}
+.fz-way{display:grid;grid-template-columns:70px 1fr auto;gap:8px;font-size:13px;padding:7px 0;border-top:1px solid var(--line);margin-top:8px}
+.fz-way .k{color:var(--muted);font-size:12px}
+.fz-way .d{font-weight:700;white-space:nowrap}
+.fz-card details{margin-top:8px;font-size:12.5px}
+.fz-card summary{cursor:pointer;color:var(--blue-600);font-weight:600}
+.fz-card .seglist{margin-top:8px;padding-top:8px}
+.fz-verdict{display:flex;gap:10px;align-items:flex-start;border-radius:8px;padding:13px 15px;margin-top:14px;font-size:13.5px;line-height:1.5}
+.fz-verdict.ok{background:#e5f4ec;color:#14532f}
+.fz-verdict.info{background:#fbf1de;color:#5c4210}
+.fz-verdict.note{background:#e9f4fb;color:var(--ink-2)}
+.fz-verdict svg{flex:none;margin-top:2px}
+.fz-edit{margin-top:18px;border:1px solid var(--line);border-radius:10px;padding:12px 16px;background:#fff}
+.fz-edit>summary{cursor:pointer;font-weight:600;font-size:14px;color:var(--blue-800)}
+.fz-edit-note{font-size:13px;color:var(--muted);margin:10px 0 0}
+.field.fromdata label::after{content:"aus Schuldaten";margin-left:6px;font-size:10.5px;font-weight:600;color:var(--green);background:#e5f4ec;border-radius:99px;padding:1px 7px}
+.field.fromdata input[readonly]{background:#f3f8f5;border-color:#cfe5d8;color:var(--ink-2)}
 .segtotal{margin-top:12px;padding-top:10px;border-top:1px solid var(--line);font-size:13.5px;font-weight:700;color:var(--blue-900);display:flex;justify-content:space-between;gap:12px}
 
 @media (max-width:980px){
   .reason-layout{grid-template-columns:1fr}
+  .fz-basis,.fz-cards{grid-template-columns:1fr}
   .route-cta{flex-direction:column;align-items:flex-start}
   .route-cta .btn{margin-left:0}
 }
 @media (max-width:720px){
   .reason-grid{grid-template-columns:1fr}
+  .fz-way{grid-template-columns:62px 1fr}
+  .fz-way .d{grid-column:2;font-weight:600;color:var(--muted)}
 }
 
 /* ---------- Schritt 4: Zusammenfassung ---------- */
@@ -2173,85 +2215,88 @@ h2{font-size:31px;line-height:1.2}
 
             <div class="route-cta">
               <div>
-                <h4>Route automatisch berechnen</h4>
-                <p>Wir nutzen Ihre Wohnadresse aus Schritt 1 und beide Schulen aus Schritt 2 und tragen Zeiten, Kilometer und Verbindungen ein. Sie können alles danach anpassen.</p>
+                <h4>Schnellste ÖPNV-Verbindung – automatisch ermittelt</h4>
+                <p>Sie müssen nichts heraussuchen: Wir verwenden Ihre Wohnadresse aus Schritt 1, die Adressen beider Schulen aus Schritt 2 und die hinterlegten Unterrichtszeiten der Schulen (frühester Beginn, spätestes Ende).</p>
               </div>
-              <button class="btn btn-action btn-sm" id="s3-route-btn" data-track="Route automatisch berechnen">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M12 21s7-6.2 7-11a7 7 0 10-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
-                Route berechnen
+              <button class="btn btn-ghost btn-sm" id="s3-route-btn" data-track="Fahrzeit neu berechnen">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M21 12a9 9 0 11-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>
+                Neu berechnen
               </button>
             </div>
+            <div class="fz-basis" id="s3-fz-basis"></div>
             <div class="scanbar" id="s3-scanbar"><i id="s3-scanfill"></i></div>
             <div class="scan-status" id="s3-scanstatus">Verbindungen werden abgerufen…</div>
-            <div class="autofill-note" id="s3-route-note">
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex:none;margin-top:1px"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.5 2.5L16 9.5"/></svg>
-              <span id="s3-route-text"></span>
-            </div>
+            <div class="fz-missing" id="s3-fz-missing"></div>
+            <div id="s3-fz-result"></div>
 
-            <div class="row c2" style="margin-top:22px">
-              <div class="schoolcol">
-                <div class="routehead">
-                  <span class="colhead" style="margin:0">Sprengelschule</span>
-                  <span class="routeschool" id="s3-spr-name">– noch nicht angegeben –</span>
+            <details class="fz-edit" id="s3-fz-edit">
+              <summary>Übernommene Zeiten prüfen oder korrigieren</summary>
+              <p class="fz-edit-note">Die Felder sind automatisch ausgefüllt. Ändern Sie sie nur, wenn Ihre tatsächliche Verbindung abweicht. Unterrichtszeiten stammen aus den Schuldaten.</p>
+              <div class="row c2" style="margin-top:22px">
+                <div class="schoolcol">
+                  <div class="routehead">
+                    <span class="colhead" style="margin:0">Sprengelschule</span>
+                    <span class="routeschool" id="s3-spr-name">– noch nicht angegeben –</span>
+                  </div>
+                  <div class="row c2" style="margin-bottom:14px">
+                    <div class="field" data-required><label for="s3_spr_weggang">Weggang Wohnung *</label><input id="s3_spr_weggang" type="time"><span class="err">Bitte angeben.</span></div>
+                    <div class="field"><label for="s3_spr_abfahrt">Abfahrt um</label><input id="s3_spr_abfahrt" type="time"></div>
+                  </div>
+                  <div class="row c2" style="margin-bottom:14px">
+                    <div class="field"><label for="s3_spr_ankunftort">Ankunft Schulort</label><input id="s3_spr_ankunftort" type="time"></div>
+                    <div class="field" data-required><label for="s3_spr_ankunftschule">Ankunft Schule *</label><input id="s3_spr_ankunftschule" type="time"><span class="err">Bitte angeben.</span></div>
+                  </div>
+                  <div class="row c2" style="margin-bottom:14px">
+                    <div class="field" data-required><label for="s3_spr_beginn">Unterrichtsbeginn *</label><input id="s3_spr_beginn" type="time"><span class="err">Bitte angeben.</span></div>
+                    <div class="field"><label for="s3_spr_ende">Unterrichtsende</label><input id="s3_spr_ende" type="time"></div>
+                  </div>
+                  <div class="row c2" style="margin-bottom:14px">
+                    <div class="field"><label for="s3_spr_rueck">Abfahrt Bus/Bahn</label><input id="s3_spr_rueck" type="time"></div>
+                    <div class="field"><label for="s3_spr_zuhause">Ankunft Wohnung</label><input id="s3_spr_zuhause" type="time"></div>
+                  </div>
+                  <div class="row c2" style="margin-bottom:0">
+                    <div class="field" data-required><label for="s3_spr_km">Kilometer (einfach) *</label><input id="s3_spr_km" placeholder="z. B. 61 km"><span class="err">Bitte angeben.</span></div>
+                    <div class="field"><label for="s3_spr_preis">Fahrtkosten pro Monat</label><input id="s3_spr_preis" placeholder="z. B. 58,00 €"></div>
+                  </div>
+                  <ul class="seglist" id="s3-spr-segs"></ul>
+                  <div class="segtotal" id="s3-spr-total" style="display:none"></div>
                 </div>
-                <div class="row c2" style="margin-bottom:14px">
-                  <div class="field" data-required><label for="s3_spr_weggang">Weggang Wohnung *</label><input id="s3_spr_weggang" type="time"><span class="err">Bitte angeben.</span></div>
-                  <div class="field"><label for="s3_spr_abfahrt">Abfahrt um</label><input id="s3_spr_abfahrt" type="time"></div>
+
+                <div class="schoolcol">
+                  <div class="routehead">
+                    <span class="colhead" style="margin:0">Gastschule</span>
+                    <span class="routeschool" id="s3-gast-name">– noch nicht angegeben –</span>
+                  </div>
+                  <div class="row c2" style="margin-bottom:14px">
+                    <div class="field" data-required><label for="s3_gast_weggang">Weggang Wohnung *</label><input id="s3_gast_weggang" type="time"><span class="err">Bitte angeben.</span></div>
+                    <div class="field"><label for="s3_gast_abfahrt">Abfahrt um</label><input id="s3_gast_abfahrt" type="time"></div>
+                  </div>
+                  <div class="row c2" style="margin-bottom:14px">
+                    <div class="field"><label for="s3_gast_ankunftort">Ankunft Schulort</label><input id="s3_gast_ankunftort" type="time"></div>
+                    <div class="field" data-required><label for="s3_gast_ankunftschule">Ankunft Schule *</label><input id="s3_gast_ankunftschule" type="time"><span class="err">Bitte angeben.</span></div>
+                  </div>
+                  <div class="row c2" style="margin-bottom:14px">
+                    <div class="field" data-required><label for="s3_gast_beginn">Unterrichtsbeginn *</label><input id="s3_gast_beginn" type="time"><span class="err">Bitte angeben.</span></div>
+                    <div class="field"><label for="s3_gast_ende">Unterrichtsende</label><input id="s3_gast_ende" type="time"></div>
+                  </div>
+                  <div class="row c2" style="margin-bottom:14px">
+                    <div class="field"><label for="s3_gast_rueck">Abfahrt Bus/Bahn</label><input id="s3_gast_rueck" type="time"></div>
+                    <div class="field"><label for="s3_gast_zuhause">Ankunft Wohnung</label><input id="s3_gast_zuhause" type="time"></div>
+                  </div>
+                  <div class="row c2" style="margin-bottom:0">
+                    <div class="field" data-required><label for="s3_gast_km">Kilometer (einfach) *</label><input id="s3_gast_km" placeholder="z. B. 20 km"><span class="err">Bitte angeben.</span></div>
+                    <div class="field"><label for="s3_gast_preis">Fahrtkosten pro Monat</label><input id="s3_gast_preis" placeholder="z. B. 58,00 €"></div>
+                  </div>
+                  <ul class="seglist" id="s3-gast-segs"></ul>
+                  <div class="segtotal" id="s3-gast-total" style="display:none"></div>
                 </div>
-                <div class="row c2" style="margin-bottom:14px">
-                  <div class="field"><label for="s3_spr_ankunftort">Ankunft Schulort</label><input id="s3_spr_ankunftort" type="time"></div>
-                  <div class="field" data-required><label for="s3_spr_ankunftschule">Ankunft Schule *</label><input id="s3_spr_ankunftschule" type="time"><span class="err">Bitte angeben.</span></div>
-                </div>
-                <div class="row c2" style="margin-bottom:14px">
-                  <div class="field" data-required><label for="s3_spr_beginn">Unterrichtsbeginn *</label><input id="s3_spr_beginn" type="time"><span class="err">Bitte angeben.</span></div>
-                  <div class="field"><label for="s3_spr_ende">Unterrichtsende</label><input id="s3_spr_ende" type="time"></div>
-                </div>
-                <div class="row c2" style="margin-bottom:14px">
-                  <div class="field"><label for="s3_spr_rueck">Abfahrt Bus/Bahn</label><input id="s3_spr_rueck" type="time"></div>
-                  <div class="field"><label for="s3_spr_zuhause">Ankunft Wohnung</label><input id="s3_spr_zuhause" type="time"></div>
-                </div>
-                <div class="row c2" style="margin-bottom:0">
-                  <div class="field" data-required><label for="s3_spr_km">Kilometer (einfach) *</label><input id="s3_spr_km" placeholder="z. B. 61 km"><span class="err">Bitte angeben.</span></div>
-                  <div class="field"><label for="s3_spr_preis">Fahrtkosten pro Monat</label><input id="s3_spr_preis" placeholder="z. B. 58,00 €"></div>
-                </div>
-                <ul class="seglist" id="s3-spr-segs"></ul>
-                <div class="segtotal" id="s3-spr-total" style="display:none"></div>
               </div>
 
-              <div class="schoolcol">
-                <div class="routehead">
-                  <span class="colhead" style="margin:0">Gastschule</span>
-                  <span class="routeschool" id="s3-gast-name">– noch nicht angegeben –</span>
-                </div>
-                <div class="row c2" style="margin-bottom:14px">
-                  <div class="field" data-required><label for="s3_gast_weggang">Weggang Wohnung *</label><input id="s3_gast_weggang" type="time"><span class="err">Bitte angeben.</span></div>
-                  <div class="field"><label for="s3_gast_abfahrt">Abfahrt um</label><input id="s3_gast_abfahrt" type="time"></div>
-                </div>
-                <div class="row c2" style="margin-bottom:14px">
-                  <div class="field"><label for="s3_gast_ankunftort">Ankunft Schulort</label><input id="s3_gast_ankunftort" type="time"></div>
-                  <div class="field" data-required><label for="s3_gast_ankunftschule">Ankunft Schule *</label><input id="s3_gast_ankunftschule" type="time"><span class="err">Bitte angeben.</span></div>
-                </div>
-                <div class="row c2" style="margin-bottom:14px">
-                  <div class="field" data-required><label for="s3_gast_beginn">Unterrichtsbeginn *</label><input id="s3_gast_beginn" type="time"><span class="err">Bitte angeben.</span></div>
-                  <div class="field"><label for="s3_gast_ende">Unterrichtsende</label><input id="s3_gast_ende" type="time"></div>
-                </div>
-                <div class="row c2" style="margin-bottom:14px">
-                  <div class="field"><label for="s3_gast_rueck">Abfahrt Bus/Bahn</label><input id="s3_gast_rueck" type="time"></div>
-                  <div class="field"><label for="s3_gast_zuhause">Ankunft Wohnung</label><input id="s3_gast_zuhause" type="time"></div>
-                </div>
-                <div class="row c2" style="margin-bottom:0">
-                  <div class="field" data-required><label for="s3_gast_km">Kilometer (einfach) *</label><input id="s3_gast_km" placeholder="z. B. 20 km"><span class="err">Bitte angeben.</span></div>
-                  <div class="field"><label for="s3_gast_preis">Fahrtkosten pro Monat</label><input id="s3_gast_preis" placeholder="z. B. 58,00 €"></div>
-                </div>
-                <ul class="seglist" id="s3-gast-segs"></ul>
-                <div class="segtotal" id="s3-gast-total" style="display:none"></div>
+              <div class="hint-box open" style="margin-top:18px">
+                <strong>Fahrtkosten pro Monat</strong>
+                Geben Sie die tatsächlichen monatlichen Kosten an. Mit dem Deutschlandticket (58,00 €) sind die Kosten für beide Schulen meist gleich hoch – entscheidend ist dann die Fahrzeit, nicht der Preis.
               </div>
-            </div>
-
-            <div class="hint-box open" style="margin-top:18px">
-              <strong>Fahrtkosten pro Monat</strong>
-              Geben Sie die tatsächlichen monatlichen Kosten an. Mit dem Deutschlandticket (58,00 €) sind die Kosten für beide Schulen meist gleich hoch – entscheidend ist dann die Fahrzeit, nicht der Preis.
-            </div>
+            </details>
           </div>
         </div>
       </div>
@@ -3245,84 +3290,209 @@ var toast = function(m){ return window.protoToast(m); };
       return _origShow(id, silent);
     };
 
-    /* Route "berechnen" (Demo für eine echte Fahrplan-/Maps-Anbindung) */
-    var DEMO = {
-      spr: {
-        s3_spr_weggang:'06:00', s3_spr_abfahrt:'06:12', s3_spr_ankunftort:'07:25', s3_spr_ankunftschule:'07:40',
-        s3_spr_beginn:'08:00', s3_spr_ende:'15:15', s3_spr_rueck:'15:30', s3_spr_zuhause:'17:00',
-        s3_spr_km:'ca. 61 km', s3_spr_preis:'58,00 € (Deutschlandticket)'
-      },
-      gast: {
-        s3_gast_weggang:'07:10', s3_gast_abfahrt:'07:22', s3_gast_ankunftort:'07:55', s3_gast_ankunftschule:'08:10',
-        s3_gast_beginn:'08:30', s3_gast_ende:'15:15', s3_gast_rueck:'15:25', s3_gast_zuhause:'16:10',
-        s3_gast_km:'ca. 20 km', s3_gast_preis:'58,00 € (Deutschlandticket)'
-      },
-      sprSegs: [
-        ['Fuß','Wohnung → Germering-Unterpfaffenhofen Bahnhof','12 min'],
-        ['S-Bahn','Germering-Unterpfaffenhofen → München Pasing','15 min'],
-        ['Bahn','München Pasing → Augsburg Hbf','40–45 min'],
-        ['Bus','Augsburg Hbf → Berufsschule','12–15 min']
-      ],
-      gastSegs: [
-        ['Fuß','Wohnung → Germering-Unterpfaffenhofen Bahnhof','12 min'],
-        ['S-Bahn','Germering-Unterpfaffenhofen → München Pasing','15 min'],
-        ['U-Bahn / Tram','München Pasing → Berufsschule','15 min']
-      ],
-      sprTotal: 'rund 1 h 40 min je Richtung',
-      gastTotal: 'rund 1 h je Richtung'
+    /* Fahrzeit: schnellste ÖPNV-Verbindung automatisch ermitteln.
+       Simuliert zwei Anbindungen, die später echt werden:
+       1) Schuldaten (Adresse, frühester Unterrichtsbeginn, spätestes Unterrichtsende)
+       2) ÖPNV-Auskunft (z. B. DEFAS Bayern / bayern-fahrplan) – hier ein grobes Modell über die Luftlinie. */
+    var FZ_MAX = 120;
+    var SCHULDATEN = {
+      'Städtische Berufsschule I Augsburg (Bebo-Wager-Berufsschule)': {adr:'Lange Gasse 11, 86152 Augsburg', beginn:'07:45', ende:'16:15', lat:48.372, lon:10.892},
+      'Städtische Berufsschule II Augsburg (Bebo-Wager-Berufsschule)': {adr:'Lange Gasse 11, 86152 Augsburg', beginn:'07:45', ende:'16:15', lat:48.372, lon:10.892},
+      'Städtische Berufsschule IV Augsburg (Welserschule)': {adr:'Schertlinstraße 23, 86159 Augsburg', beginn:'08:00', ende:'15:30', lat:48.352, lon:10.889},
+      'Städtische Berufsschule V Augsburg (Bebo-Wager-Schule)': {adr:'Lange Gasse 11, 86152 Augsburg', beginn:'07:45', ende:'16:15', lat:48.372, lon:10.892},
+      'Städtische Berufsschule VII Augsburg (Bebo-Wager-Schule)': {adr:'Lange Gasse 11, 86152 Augsburg', beginn:'07:45', ende:'16:15', lat:48.372, lon:10.892},
+      'Staatliche Berufsschule München-Land': {adr:'Riesstraße 34, 80995 München', beginn:'08:00', ende:'15:45', lat:48.205, lon:11.513},
+      'Städtische Berufsschule für Fachinformatik Systemintegration München': {adr:'Riesstraße 40, 80992 München', beginn:'08:00', ende:'15:30', lat:48.180, lon:11.512},
+      'Städtische Berufsschule für den Einzelhandel München Nord': {adr:'Riesstraße 34, 80992 München', beginn:'08:00', ende:'15:30', lat:48.180, lon:11.512},
+      'Städtische Berufsschule für Bekleidung München': {adr:'Luisenstraße 29, 80335 München', beginn:'08:15', ende:'15:45', lat:48.145, lon:11.563},
+      'Städtische Berufsschule für Farbe und Gestaltung München': {adr:'Luisenstraße 29, 80335 München', beginn:'08:15', ende:'15:45', lat:48.145, lon:11.563},
+      'Städtische Berufsschule für das Bäcker- und Konditorenhandwerk München': {adr:'Luisenstraße 29, 80335 München', beginn:'07:30', ende:'14:30', lat:48.145, lon:11.563},
+      'Städtische Berufsschule für Fachkräfte in Arzt- und Tierarztpraxen München': {adr:'Luisenstraße 29, 80335 München', beginn:'08:00', ende:'15:15', lat:48.145, lon:11.563},
+      'Städtische Berufsschule I für Metall- und Elektrotechnik Regensburg': {adr:'Plato-Wild-Straße 1, 93053 Regensburg', beginn:'07:45', ende:'15:15', lat:49.006, lon:12.112},
+      'Städtische Berufsschule III für kaufmännische und Gesundheitsberufe Regensburg': {adr:'Plato-Wild-Straße 1, 93053 Regensburg', beginn:'07:45', ende:'15:15', lat:49.006, lon:12.112},
+      'Berufsschule Direktorat 7 Nürnberg': {adr:'Äußere Bayreuther Straße 8, 90409 Nürnberg', beginn:'08:00', ende:'15:30', lat:49.462, lon:11.088}
     };
+    var ORTE = {
+      'münchen':[48.137,11.575], 'augsburg':[48.366,10.894], 'regensburg':[49.013,12.101], 'nürnberg':[49.452,11.077],
+      'germering':[48.133,11.367], 'unterföhring':[48.190,11.645], 'fürstenfeldbruck':[48.178,11.255], 'dachau':[48.260,11.434],
+      'freising':[48.403,11.749], 'erding':[48.306,11.906], 'ingolstadt':[48.766,11.426], 'landshut':[48.537,12.152],
+      'kempten':[47.726,10.315], 'rosenheim':[47.857,12.118], 'starnberg':[47.998,11.340], 'friedberg':[48.357,10.984],
+      'neusäß':[48.400,10.830], 'fürth':[49.477,10.989], 'erlangen':[49.590,11.004], 'kaufbeuren':[47.880,10.622],
+      'memmingen':[47.984,10.180], 'würzburg':[49.792,9.953], 'bamberg':[49.892,10.887], 'passau':[48.574,13.431],
+      'straubing':[48.882,12.570], 'pfaffenhofen':[48.530,11.507], 'mering':[48.266,10.984], 'königsbrunn':[48.268,10.889],
+      'garching':[48.249,11.651], 'ismaning':[48.226,11.680], 'puchheim':[48.172,11.352], 'gröbenzell':[48.196,11.371],
+      'olching':[48.208,11.330], 'unterschleißheim':[48.281,11.577], 'neufahrn':[48.316,11.665], 'moosburg':[48.470,11.937],
+      'kelheim':[48.917,11.887], 'gersthofen':[48.424,10.873], 'stadtbergen':[48.365,10.840], 'schwabmünchen':[48.180,10.755],
+      'landsberg':[48.048,10.883], 'weilheim':[47.840,11.142], 'bad tölz':[47.761,11.557], 'ebersberg':[48.077,11.971]
+    };
+    var PLZ2 = {'80':[48.137,11.575],'81':[48.120,11.600],'82':[48.080,11.300],'83':[47.860,12.120],'84':[48.540,12.150],'85':[48.350,11.650],
+      '86':[48.370,10.900],'87':[47.730,10.310],'89':[48.400,10.000],'90':[49.450,11.080],'91':[49.500,10.900],'92':[49.400,12.000],
+      '93':[49.020,12.100],'94':[48.600,13.000],'95':[50.000,11.500],'96':[50.000,10.900],'97':[49.800,9.950]};
 
+    function gv(id){ var el=document.getElementById(id); return el ? el.value.trim() : ''; }
+    function wohnadresse(){
+      var p = gv('p1_plz') || gv('p1_ort') ? 'p1_' : '';
+      return {strasse:[gv(p+'strasse'), gv(p+'hausnr')].filter(Boolean).join(' '), plz:gv(p+'plz'), ort:gv(p+'ort'),
+              schritt: p ? 'screen-antrag-parent' : 'screen-antrag-adult'};
+    }
+    function geo(plz, ort){
+      var o = (ort||'').toLowerCase().replace(/\s*\(.*\)\s*/g,'').trim();
+      var keys = Object.keys(ORTE);
+      for(var i=0;i<keys.length;i++){ if(o.indexOf(keys[i])>-1) return ORTE[keys[i]]; }
+      var m = String(plz||ort||'').match(/\d{5}/) || String(plz||'').match(/\d{2}/);
+      var k = m ? m[0].slice(0,2) : '';
+      return PLZ2[k] || ORTE['münchen'];
+    }
+    function schule(rolle){
+      var name = gv('s2_'+rolle+'_name'), d = SCHULDATEN[name];
+      if(!name) return null;
+      if(d) return {name:name, adr:d.adr, beginn:d.beginn, ende:d.ende, lat:d.lat, lon:d.lon, ausDaten:true};
+      var ort = gv('s2_'+rolle+'_ort'), g = geo(ort, ort);
+      return {name:name, adr:ort || 'Ort unbekannt', beginn:'08:00', ende:'15:30', lat:g[0], lon:g[1], ausDaten:false};
+    }
+    function km(a, b){
+      var R=6371, r=Math.PI/180, dLat=(b[0]-a[0])*r, dLon=(b[1]-a[1])*r;
+      var x=Math.sin(dLat/2)*Math.sin(dLat/2)+Math.cos(a[0]*r)*Math.cos(b[0]*r)*Math.sin(dLon/2)*Math.sin(dLon/2);
+      return 2*R*Math.asin(Math.sqrt(x));
+    }
+    function hm(t){ var p=t.split(':'); return +p[0]*60 + +p[1]; }
+    function tm(m){ m=((m%1440)+1440)%1440; var h=Math.floor(m/60), mm=m%60; return (h<10?'0':'')+h+':'+(mm<10?'0':'')+mm; }
+    function dur(m){ var h=Math.floor(m/60), mm=m%60; return h ? h+' Std. '+(mm<10?'0':'')+mm+' Min.' : mm+' Min.'; }
+
+    /* Simulierte Verbindungssuche: Teilstrecken je nach Entfernung, Ankunft vor dem frühesten Unterrichtsbeginn */
+    function verbindung(home, homeOrt, s){
+      var d = Math.max(1, Math.round(km(home,[s.lat,s.lon])*1.3)), legs;
+      var stadt = s.adr.replace(/^.*\d{5}\s*/,'');
+      if(d < 6) legs = [['Fuß','Wohnung → Haltestelle',6],['Bus/Tram','→ '+s.adr.split(',')[0],Math.round(d*3+6)],['Fuß','Haltestelle → Schule',4]];
+      else if(d < 28) legs = [['Fuß','Wohnung → Bahnhof '+homeOrt,9],['S-Bahn','→ '+stadt+' Umstiegsknoten',Math.round(d*1.5+5)],['Umstieg','Wartezeit',5],['Bus/Tram','→ '+s.adr.split(',')[0],12],['Fuß','Haltestelle → Schule',4]];
+      else legs = [['Fuß','Wohnung → Haltestelle',7],['Bus','→ Bahnhof '+homeOrt,12],['Umstieg','Wartezeit',7],['Regionalzug','→ '+stadt+' Hbf',Math.round(d*0.72+8)],['Umstieg','Wartezeit',7],['Bus/Tram',stadt+' Hbf → '+s.adr.split(',')[0],14],['Fuß','Haltestelle → Schule',4]];
+      var fahrt = legs.reduce(function(a,l){ return a+l[2]; },0);
+      var takt = d < 28 ? 10 : 30, puffer = (d*7)%takt;          // Fahrplantakt: Ankunft liegt nicht exakt auf Unterrichtsbeginn
+      var an = hm(s.beginn) - 5 - puffer, ab = an - fahrt;
+      var rAb = hm(s.ende) + 6 + (d*5)%takt, rAn = rAb + fahrt;
+      var letzte = legs[legs.length-1][2] + legs[legs.length-2][2];
+      var ums = legs.filter(function(l){ return l[0]==='Umstieg'; }).length;
+      return {km:d, legs:legs, fahrt:fahrt, ums:ums, ab:tm(ab), abHst:tm(ab+legs[0][2]), anOrt:tm(an-letzte), an:tm(an), warte:hm(s.beginn)-an,
+              rAb:tm(rAb), rAn:tm(rAn), max:fahrt};
+    }
+
+    function setVal(id, v, ausDaten){
+      var el = document.getElementById(id); if(!el) return;
+      el.value = v;
+      var f = el.closest('.field');
+      if(f){ f.classList.add('autofilled'); f.classList.remove('invalid'); f.classList.toggle('fromdata', !!ausDaten); }
+      el.readOnly = !!ausDaten;
+    }
+    function fillFields(pre, s, v){
+      setVal(pre+'weggang', v.ab); setVal(pre+'abfahrt', v.abHst); setVal(pre+'ankunftort', v.anOrt); setVal(pre+'ankunftschule', v.an);
+      setVal(pre+'beginn', s.beginn, s.ausDaten); setVal(pre+'ende', s.ende, s.ausDaten);
+      setVal(pre+'rueck', tm(hm(v.rAb)+v.legs[0][2])); setVal(pre+'zuhause', v.rAn);
+      setVal(pre+'km', 'ca. '+v.km+' km'); if(!gv(pre+'preis')) setVal(pre+'preis', '58,00 € (Deutschlandticket)');
+    }
     function renderSegs(ulId, segs, totalId, totalText){
-      var ul = document.getElementById(ulId);
-      ul.innerHTML = '';
-      segs.forEach(function(s){
-        var li = document.createElement('li');
-        li.innerHTML = '<span class="mode">'+s[0]+'</span><span>'+s[1]+'</span><span class="dur">'+s[2]+'</span>';
-        ul.appendChild(li);
-      });
+      var ul = document.getElementById(ulId); ul.innerHTML = '';
       var t = document.getElementById(totalId);
       t.style.display = 'flex';
       t.innerHTML = '<span>Gesamtfahrzeit</span><span>'+totalText+'</span>';
     }
+    function segHtml(legs){
+      return '<ul class="seglist">'+legs.map(function(l){ return '<li><span class="mode">'+esc(l[0])+'</span><span>'+esc(l[1])+'</span><span class="dur">'+l[2]+' min</span></li>'; }).join('')+'</ul>';
+    }
+    function card(rolle, s, v){
+      var over = v.max > FZ_MAX;
+      return '<div class="fz-card'+(over?' over':'')+'"><div class="fz-t"><span>'+rolle+'</span><span class="fz-badge '+(over?'no':'ok')+'">'+(over?'über 2 Std.':'unter 2 Std.')+'</span></div>'+
+        '<div class="fz-n">'+esc(s.name)+'</div>'+
+        '<div class="fz-big">'+dur(v.fahrt)+'<small>je Weg · '+(v.ums?v.ums+' Umstieg'+(v.ums>1?'e':''):'ohne Umstieg')+' · ca. '+v.km+' km</small></div>'+
+        '<div class="fz-way"><span class="k">Hinweg</span><span>ab '+v.ab+' → an '+v.an+' Uhr</span><span class="d">'+v.warte+' Min. vor Beginn</span></div>'+
+        '<div class="fz-way"><span class="k">Rückweg</span><span>ab '+v.rAb+' → an '+v.rAn+' Uhr</span><span class="d">nach '+s.ende+' Uhr</span></div>'+
+        '<details><summary>Verbindung anzeigen</summary>'+segHtml(v.legs)+'</details></div>';
+    }
+    function esc(x){ return String(x==null?'':x).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
 
-    document.getElementById('s3-route-btn').addEventListener('click', function(){
+    var lastSig = null, runId = 0;
+    function signatur(){ var w=wohnadresse(); return [w.strasse,w.plz,w.ort,gv('s2_spr_name'),gv('s2_spr_ort'),gv('s2_gast_name'),gv('s2_gast_ort')].join('|'); }
+    function fahrzeitAktiv(){ var fz=document.querySelector('#screen-step3 .s3-cat[value="fahrzeit"]'); return fz && fz.checked; }
+
+    function ermitteln(){
       syncSchools();
-      var bar = document.getElementById('s3-scanbar'),
-          fill = document.getElementById('s3-scanfill'),
-          status = document.getElementById('s3-scanstatus'),
-          note = document.getElementById('s3-route-note'),
-          noteText = document.getElementById('s3-route-text');
-
-      note.classList.remove('on');
+      var id = ++runId;
+      var w = wohnadresse(), spr = schule('spr'), gast = schule('gast');
+      var basis = document.getElementById('s3-fz-basis'), miss = document.getElementById('s3-fz-missing'),
+          res = document.getElementById('s3-fz-result'), bar = document.getElementById('s3-scanbar'),
+          fill = document.getElementById('s3-scanfill'), status = document.getElementById('s3-scanstatus');
+      lastSig = signatur();
+      res.innerHTML = '';
+      var fehlt = [];
+      if(!w.ort && !w.plz) fehlt.push(['Ihre Wohnadresse (PLZ und Ort)', w.schritt, 'Zu Schritt 1']);
+      if(!spr) fehlt.push(['die Sprengelschule', 'screen-step2', 'Zu Schritt 2']);
+      if(!gast) fehlt.push(['die gewünschte Gastschule', 'screen-step2', 'Zu Schritt 2']);
+      function fb(t, h, sub){ return '<div class="fb"><b>'+t+'</b>'+h+(sub||''); }
+      basis.innerHTML =
+        fb('Start', esc([w.strasse, [w.plz,w.ort].filter(Boolean).join(' ')].filter(Boolean).join(', ') || '– fehlt –'), (w.ort||w.plz?'<br><span class="src">Wohnadresse aus Schritt 1</span>':'')+'</div>') +
+        [['Sprengelschule',spr],['Gastschule',gast]].map(function(x){
+          var sc=x[1]; if(!sc) return fb(x[0], '– fehlt –', '</div>');
+          return fb(x[0], esc(sc.name)+'<br>'+esc(sc.adr)+'<br>Unterricht frühestens '+sc.beginn+', spätestens bis '+sc.ende+' Uhr',
+            '<br><span class="src'+(sc.ausDaten?'':' def')+'">'+(sc.ausDaten?'Unterrichtszeiten aus Schuldaten':'nicht in Schuldaten – Standardzeiten, bitte prüfen')+'</span></div>');
+        }).join('');
+      if(fehlt.length){
+        miss.innerHTML = '<b>Für die automatische Berechnung fehlt noch:</b><ul>'+fehlt.map(function(f){return '<li>'+f[0]+'</li>';}).join('')+'</ul>'+
+          fehlt.filter(function(f,i,a){ return a.findIndex(function(g){return g[1]===f[1];})===i; }).map(function(f){ return '<button type="button" class="btn btn-ghost btn-sm" data-goto="'+f[1]+'">'+f[2]+'</button>'; }).join('')+
+          '<p style="margin:10px 0 0;font-size:12.5px">Alternativ können Sie die Zeiten unten von Hand eintragen.</p>';
+        miss.classList.add('on'); document.getElementById('s3-fz-edit').open = true;
+        bar.classList.remove('on'); status.classList.remove('on');
+        track('Fahrzeit: Angaben fehlen ('+fehlt.map(function(f){return f[0];}).join(', ')+')');
+        return;
+      }
+      miss.classList.remove('on');
       bar.classList.add('on'); status.classList.add('on');
-      status.textContent = 'Verbindungen werden abgerufen…';
-      fill.style.width = '0';
+      status.textContent = 'Schnellste Verbindungen werden über die ÖPNV-Auskunft gesucht …';
+      fill.style.transition = 'none'; fill.style.width = '0'; void fill.offsetWidth; fill.style.transition = '';
       setTimeout(function(){ fill.style.width = '100%'; }, 40);
-      track('Route berechnen gestartet');
+      track('Fahrzeit: automatische Berechnung gestartet');
 
       setTimeout(function(){
-        var n = 0;
-        [DEMO.spr, DEMO.gast].forEach(function(set){
-          Object.keys(set).forEach(function(id){
-            var el = document.getElementById(id);
-            if(el && !el.value){
-              el.value = set[id];
-              var f = el.closest('.field');
-              if(f){ f.classList.add('autofilled'); f.classList.remove('invalid'); }
-              n++;
-            }
-          });
-        });
-        renderSegs('s3-spr-segs', DEMO.sprSegs, 's3-spr-total', DEMO.sprTotal);
-        renderSegs('s3-gast-segs', DEMO.gastSegs, 's3-gast-total', DEMO.gastTotal);
+        if(id !== runId) return;
+        var home = geo(w.plz, w.ort), ort = w.ort || w.plz;
+        var vs = verbindung(home, ort, spr), vg = verbindung(home, ort, gast);
+        fillFields('s3_spr_', spr, vs); fillFields('s3_gast_', gast, vg);
+        renderSegs('s3-spr-segs', vs.legs, 's3-spr-total', dur(vs.fahrt)+' je Richtung');
+        renderSegs('s3-gast-segs', vg.legs, 's3-gast-total', dur(vg.fahrt)+' je Richtung');
+
+        var html = '<div class="fz-cards">'+card('Sprengelschule', spr, vs)+card('Gastschule', gast, vg)+'</div>';
+        var ico = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.5 2.5L16 9.5"/></svg>';
+        var info = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v.5M12 11v5"/></svg>';
+        if(vs.max > FZ_MAX && vg.max <= FZ_MAX)
+          html += '<div class="fz-verdict ok">'+ico+'<span><b>Ihre Fahrzeit zur Sprengelschule liegt über der Richtgröße von 2 Stunden je Weg.</b> Zur Gastschule brauchen Sie '+dur(vg.fahrt)+' – das sind '+dur(vs.fahrt-vg.fahrt)+' weniger pro Weg. Das stützt Ihren Antrag.</span></div>';
+        else if(vg.fahrt >= vs.fahrt)
+          html += '<div class="fz-verdict info">'+info+'<span><b>Die Gastschule ist nicht schneller erreichbar als die Sprengelschule.</b> Die Fahrzeit ist hier kein geeigneter Grund. Prüfen Sie, ob ein anderer Grund zutrifft.</span></div>';
+        else
+          html += '<div class="fz-verdict info">'+info+'<span><b>Die Sprengelschule ist in '+dur(vs.fahrt)+' erreichbar – also unter 2 Stunden je Weg.</b> Die Gastschule spart '+dur(vs.fahrt-vg.fahrt)+' pro Weg. Die Fahrzeit allein reicht meist nicht; beschreiben Sie ggf. weitere Gründe in Ihrer Begründung.</span></div>';
+        html += '<div class="fz-verdict note">'+ico+'<span><b>Der Fahrzeitnachweis wird automatisch erstellt und Ihrem Antrag beigefügt.</b> Sie müssen keinen Fahrplanausdruck hochladen.</span></div>';
+        res.innerHTML = html;
+        document.getElementById('s3-fz-edit').open = false;
+
+        var fl = document.getElementById('s3-filelist'), alt = fl.querySelector('[data-auto="fz"]');
+        if(alt) alt.remove();
+        var li = document.createElement('li'); li.dataset.auto = 'fz';
+        li.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1d7a4d" stroke-width="1.8"><path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8l-5-5z"/><path d="M14 3v5h5"/></svg>'+
+          '<span>Fahrzeitnachweis_OEPNV.pdf</span><span style="color:#1d7a4d;font-size:12px">automatisch erstellt</span>';
+        fl.insertBefore(li, fl.firstChild);
 
         bar.classList.remove('on'); status.classList.remove('on');
-        noteText.textContent = n + ' Felder wurden aus der Verbindungsauskunft übernommen. Bitte prüfen Sie die grün markierten Angaben – Unterrichtszeiten können von Ihrer Schule abweichen.';
-        note.classList.add('on');
-        track('Route berechnet – ' + n + ' Felder gefüllt');
-        toast('Verbindungen übernommen');
-      }, 1900);
+        track('Fahrzeit berechnet – Sprengelschule '+vs.fahrt+' min, Gastschule '+vg.fahrt+' min');
+        toast('Schnellste Verbindungen ermittelt');
+      }, 1700);
+    }
+
+    document.getElementById('s3-route-btn').addEventListener('click', function(e){ e.preventDefault(); ermitteln(); });
+    cats.forEach(function(c){
+      if(c.value === 'fahrzeit') c.addEventListener('change', function(){ if(c.checked && signatur() !== lastSig) ermitteln(); });
     });
+    /* Beim Zurückkehren zu Schritt 3 neu berechnen, falls Adresse oder Schulen geändert wurden */
+    new MutationObserver(function(){
+      var sc = document.getElementById('screen-step3');
+      if(sc.classList.contains('active') && fahrzeitAktiv() && signatur() !== lastSig) ermitteln();
+    }).observe(document.getElementById('screen-step3'), {attributes:true, attributeFilter:['class']});
 
     /* Nachweise-Upload */
     var dz = document.getElementById('s3-dropzone'),
