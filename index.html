@@ -57,6 +57,11 @@ button{font-family:inherit}
 }
 #protobar.hidden{display:none}
 #protobar .pb-label{opacity:.72;letter-spacing:.01em}
+#protobar .pb-api{border:0;border-radius:99px;padding:3px 10px;font-size:12px;cursor:pointer;white-space:nowrap}
+#protobar .pb-api.an{background:#1d7a4d;color:#fff}
+#protobar .pb-api.aus{background:#3a4a57;color:#d5dee6}
+.fileflag{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);margin-left:auto;white-space:nowrap}
+.filelist li .fileflag + button{margin-left:10px}
 #protobar select{
   background:#20374a;color:#fff;border:1px solid #3b5468;border-radius:999px;
   padding:5px 10px;font-size:13px;font-family:inherit;max-width:190px;
@@ -2713,6 +2718,7 @@ h2{font-size:31px;line-height:1.2}
 
 <div id="protobar">
   <span class="pb-label">Klickdummy UG1</span>
+  <button type="button" class="pb-api aus" id="pb-api" title="Backend-Verbindung. Adresse ändern mit ?api=<URL>, abschalten mit ?api=aus. Klick prüft erneut.">Backend: prüfe …</button>
   <select id="screenselect" aria-label="Screen wechseln"></select>
   <button id="btnlog" type="button">Klickprotokoll</button>
   <button id="btnreset" type="button">Zurücksetzen</button>
@@ -2936,7 +2942,7 @@ h2{font-size:31px;line-height:1.2}
     if(fl) fl.innerHTML='';
     var cc=document.getElementById('charcount'); if(cc) cc.textContent='0';
     document.querySelectorAll('.acc.open').forEach(function(a){ a.classList.remove('open'); });
-    log = []; try{ localStorage.removeItem('ug1_log'); }catch(e){} renderLog();
+    log = []; try{ localStorage.removeItem('ug1_log'); localStorage.removeItem('gs_antrag'); }catch(e){} renderLog();
     t0 = Date.now();
     show('screen-home', true);
     toast('Prototyp zurückgesetzt');
@@ -2995,6 +3001,76 @@ h2{font-size:31px;line-height:1.2}
 var show  = function(id, silent){ return window.protoShow(id, silent); };
 var track = function(t){ return window.protoTrack(t); };
 var toast = function(m){ return window.protoToast(m); };
+
+/* ===== Backend-Anbindung =====
+   Spricht mit der Gastschulantrag-API (Repo Test-Repository_Gastschulantrag_Backend).
+   Ist sie nicht erreichbar, läuft der Klickdummy wie bisher als Simulation weiter. */
+var Backend = (function(){
+  var param = new URLSearchParams(location.search).get('api');
+  // Automatisch nur bei lokaler Entwicklung; auf GitHub Pages (Nutzertests) nur mit ?api=<URL>,
+  // damit Testpersonen keine Browser-Abfrage zum Zugriff aufs lokale Netzwerk sehen
+  var lokal = location.protocol === 'file:' || /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+  var standard = lokal ? 'http://localhost:3100' : 'aus';
+  var basis;
+  try {
+    if(param) localStorage.setItem('gs_api', param);
+    basis = param || localStorage.getItem('gs_api') || standard;
+  } catch(e){ basis = param || standard; }
+  basis = basis.replace(/\/+$/, '');
+  var aus = basis === 'aus';
+  var verbunden = false;
+
+  function anzeigen(){
+    var b = document.getElementById('pb-api'); if(!b) return;
+    b.className = 'pb-api ' + (verbunden ? 'an' : 'aus');
+    b.textContent = aus ? 'Backend: aus (Simulation)' : verbunden ? 'Backend: ' + basis.replace(/^https?:\/\//, '') : 'Backend nicht erreichbar – Simulation';
+  }
+  function pruefen(){
+    if(aus){ verbunden = false; anzeigen(); return Promise.resolve(false); }
+    var ctl = new AbortController(), t = setTimeout(function(){ ctl.abort(); }, 2000);
+    return fetch(basis + '/health', {signal: ctl.signal})
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(j){ verbunden = !!(j && j.status === 'ok'); })
+      .catch(function(){ verbunden = false; })
+      .then(function(){ clearTimeout(t); anzeigen(); return verbunden; });
+  }
+  /* Fehler tragen status und die Antwort des Backends (z. B. Feldfehler) */
+  function anfrage(methode, pfad, daten, kopf){
+    var opt = {method: methode, headers: Object.assign({}, kopf || {})};
+    if(daten instanceof FormData) opt.body = daten;
+    else if(daten !== undefined){ opt.body = JSON.stringify(daten); opt.headers['Content-Type'] = 'application/json'; }
+    return fetch(basis + pfad, opt).then(function(r){
+      return r.json().catch(function(){ return null; }).then(function(j){
+        if(!r.ok){ var e = new Error((j && j.message) || ('Fehler ' + r.status)); e.status = r.status; e.daten = j; throw e; }
+        return j;
+      });
+    });
+  }
+  var bereit = pruefen();
+  document.addEventListener('DOMContentLoaded', anzeigen);
+  document.addEventListener('click', function(e){ if(e.target.closest('#pb-api')){ pruefen().then(function(ok){ toast(ok ? 'Backend verbunden' : 'Backend nicht erreichbar – Simulation aktiv'); }); } });
+
+  /* Eigener Antrag: Aktenzeichen + Zugangsschlüssel (Übergang bis zur Anmeldung über BayernID) */
+  function meinAntrag(neu){
+    try {
+      if(neu === null){ localStorage.removeItem('gs_antrag'); return null; }
+      if(neu){ localStorage.setItem('gs_antrag', JSON.stringify(Object.assign({basis: basis}, neu))); return neu; }
+      var a = JSON.parse(localStorage.getItem('gs_antrag') || 'null');
+      return a && a.basis === basis ? a : null;
+    } catch(e){ return null; }
+  }
+
+  return {
+    bereit: bereit,
+    pruefen: pruefen,
+    verbunden: function(){ return verbunden; },
+    basis: basis,
+    meinAntrag: meinAntrag,
+    get: function(pfad, kopf){ return anfrage('GET', pfad, undefined, kopf); },
+    post: function(pfad, daten, kopf){ return anfrage('POST', pfad, daten, kopf); }
+  };
+})();
+window.Backend = Backend;
 
   /* --- Login Funktionalität --- */
   var btnLogin = document.getElementById('btn-login');
@@ -3450,10 +3526,34 @@ var toast = function(m){ return window.protoToast(m); };
       setTimeout(function(){ fill.style.width = '100%'; }, 40);
       track('Fahrzeit: automatische Berechnung gestartet');
 
-      setTimeout(function(){
-        if(id !== runId) return;
+      /* Verbindungssuche über das Backend; ist es nicht erreichbar oder fehlen Angaben, rechnet die lokale Simulation */
+      function wegAusApi(sw){
+        var legs = sw.hinweg.teilstrecken.map(function(t){ return [t.verkehrsmittel, t.beschreibung, t.dauerMin]; });
+        var an = sw.hinweg.ankunft, letzte = legs[legs.length-1][2] + (legs.length > 1 ? legs[legs.length-2][2] : 0);
+        return {km: sw.entfernungKm, legs: legs, fahrt: sw.hinweg.dauerMin, ums: sw.hinweg.umstiege, ab: sw.hinweg.abfahrt,
+                abHst: tm(hm(sw.hinweg.abfahrt) + legs[0][2]), anOrt: tm(hm(an) - letzte), an: an, warte: hm(sw.unterrichtBeginn) - hm(an),
+                rAb: sw.rueckweg.abfahrt, rAn: sw.rueckweg.ankunft, max: sw.maxDauerMin};
+      }
+      function schuleAusApi(sw, lokal){
+        return {name: sw.schulname, adr: lokal ? lokal.adr : '', beginn: sw.unterrichtBeginn, ende: sw.unterrichtEnde, ausDaten: true};
+      }
+      function ueberBackend(){
+        var p = gv('p1_plz') || gv('p1_ort') ? 'p1_' : '';
+        var adresse = {strasse: gv(p+'strasse'), hausnummer: gv(p+'hausnr'), plz: gv(p+'plz'), ort: gv(p+'ort')};
+        if(!Backend.verbunden() || !gv('s2_spr_nr') || !gv('s2_gast_nr') || !adresse.strasse || !adresse.hausnummer) return Promise.reject(new Error('lokal'));
+        return Backend.post('/fahrzeit/vergleich', {wohnadresse: adresse, sprengelschuleNr: gv('s2_spr_nr'), gastschuleNr: gv('s2_gast_nr')}).then(function(r){
+          return {spr: schuleAusApi(r.sprengelschule, spr), gast: schuleAusApi(r.gastschule, gast), vs: wegAusApi(r.sprengelschule), vg: wegAusApi(r.gastschule), quelle: 'Backend – ' + r.quelle};
+        });
+      }
+      function lokal(){
         var home = geo(w.plz, w.ort), ort = w.ort || w.plz;
-        var vs = verbindung(home, ort, spr), vg = verbindung(home, ort, gast);
+        return {spr: spr, gast: gast, vs: verbindung(home, ort, spr), vg: verbindung(home, ort, gast), quelle: 'lokale Simulation im Browser'};
+      }
+      var start = Date.now();
+      ueberBackend().catch(function(e){ if(e.message !== 'lokal') track('Fahrzeit über Backend fehlgeschlagen: ' + e.message); return lokal(); }).then(function(erg){ setTimeout(function(){
+        if(id !== runId) return;
+        spr = erg.spr; gast = erg.gast;
+        var vs = erg.vs, vg = erg.vg;
         fillFields('s3_spr_', spr, vs); fillFields('s3_gast_', gast, vg);
         renderSegs('s3-spr-segs', vs.legs, 's3-spr-total', dur(vs.fahrt)+' je Richtung');
         renderSegs('s3-gast-segs', vg.legs, 's3-gast-total', dur(vg.fahrt)+' je Richtung');
@@ -3468,6 +3568,7 @@ var toast = function(m){ return window.protoToast(m); };
         else
           html += '<div class="fz-verdict info">'+info+'<span><b>Die Sprengelschule ist in '+dur(vs.fahrt)+' erreichbar – also unter 2 Stunden je Weg.</b> Die Gastschule spart '+dur(vs.fahrt-vg.fahrt)+' pro Weg. Die Fahrzeit allein reicht meist nicht; beschreiben Sie ggf. weitere Gründe in Ihrer Begründung.</span></div>';
         html += '<div class="fz-verdict note">'+ico+'<span><b>Der Fahrzeitnachweis wird automatisch erstellt und Ihrem Antrag beigefügt.</b> Sie müssen keinen Fahrplanausdruck hochladen.</span></div>';
+        html += '<p class="fz-edit-note" style="margin:8px 0 0">Verbindungsdaten: ' + esc(erg.quelle) + '</p>';
         res.innerHTML = html;
         document.getElementById('s3-fz-edit').open = false;
 
@@ -3481,7 +3582,7 @@ var toast = function(m){ return window.protoToast(m); };
         bar.classList.remove('on'); status.classList.remove('on');
         track('Fahrzeit berechnet – Sprengelschule '+vs.fahrt+' min, Gastschule '+vg.fahrt+' min');
         toast('Schnellste Verbindungen ermittelt');
-      }, 1700);
+      }, Math.max(0, 1700 - (Date.now() - start))); });
     }
 
     document.getElementById('s3-route-btn').addEventListener('click', function(e){ e.preventDefault(); ermitteln(); });
@@ -3501,8 +3602,10 @@ var toast = function(m){ return window.protoToast(m); };
     function addFiles(files){
       Array.prototype.slice.call(files).forEach(function(f){
         var li = document.createElement('li');
+        li._datei = f;   // Datei selbst merken – wird nach dem Einreichen an das Backend übertragen
         li.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#005682" stroke-width="1.8"><path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8l-5-5z"/><path d="M14 3v5h5"/></svg>' +
-          '<span>'+f.name+'</span><span style="color:#8a949e;font-size:12px">'+Math.max(1,Math.round(f.size/1024))+' KB</span>' +
+          '<span>'+esc(f.name)+'</span><span style="color:#8a949e;font-size:12px">'+Math.max(1,Math.round(f.size/1024))+' KB</span>' +
+          '<label class="fileflag" title="Ärztliche Atteste u. Ä. sehen nur Sprengelschule und Regierung (Art. 9 DSGVO)"><input type="checkbox" class="art9"> Gesundheitsnachweis</label>' +
           '<button type="button">Entfernen</button>';
         li.querySelector('button').addEventListener('click', function(){ li.remove(); track('Nachweis entfernt: '+f.name); });
         fl.appendChild(li);
@@ -3752,8 +3855,95 @@ var toast = function(m){ return window.protoToast(m); };
         document.getElementById('s4-banner').scrollIntoView({behavior:'smooth', block:'center'});
         return;
       }
-      var az = '#GS-' + new Date().getFullYear() + '-' + String(Math.floor(1000 + Math.random()*8999));
-      var d = new Date();
+      if(btn.dataset.laeuft) return;
+      if(Backend.verbunden()){ einreichenUeberBackend(); return; }
+      abschliessen('#GS-' + new Date().getFullYear() + '-' + String(Math.floor(1000 + Math.random()*8999)), new Date());
+    });
+
+    /* Formulardaten aus Schritt 1–3 in das Format der API (AntragEinreichen) bringen */
+    function opt(v){ return v ? v : undefined; }
+    function adresse(p){ return {strasse: val(p+'strasse'), hausnummer: val(p+'hausnr'), plz: val(p+'plz'), ort: val(p+'ort')}; }
+    function sammleAntrag(){
+      var eltern = !!val('child_vorname');
+      var schueler = eltern
+        ? {vorname: val('child_vorname'), nachname: val('child_nachname'), geburtsdatum: val('child_gebdatum'), email: val('p1_email'), adresse: adresse('p1_')}
+        : {vorname: val('vorname'), nachname: val('nachname'), geburtsdatum: val('gebdatum'), email: val('email'), telefon: opt(val('tel')), adresse: adresse('')};
+      var ezb = [];
+      if(eltern){
+        ezb.push({vorname: val('p1_vorname'), nachname: val('p1_nachname'), email: val('p1_email'), telefon: opt(val('p1_tel')), adresse: adresse('p1_')});
+        if(val('p2_vorname')) ezb.push({vorname: val('p2_vorname'), nachname: val('p2_nachname'), email: val('p2_email'), telefon: opt(val('p2_tel')), adresse: val('p2_plz') ? adresse('p2_') : adresse('p1_')});
+      }
+      var artEl = document.querySelector('#screen-step2 input[name="s2_art"]:checked');
+      var art = {mit:'mit_ausbildungsvertrag', ohne:'ohne_ausbildungsvertrag', umschueler:'umschueler'}[artEl ? artEl.value : 'mit'];
+      var kategorien = [];
+      document.querySelectorAll('#screen-step3 .s3-cat:checked').forEach(function(c){ kategorien.push(c.value); });
+      return {
+        gestelltDurch: eltern ? 'erziehungsberechtigt' : 'selbst',
+        schueler: schueler,
+        erziehungsberechtigte: eltern ? ezb : undefined,
+        sprengelschuleNr: val('s2_spr_nr'),
+        gastschuleNr: val('s2_gast_nr'),
+        schuljahr: val('s2_ab_schuljahr'),
+        ausbildung: {
+          art: art, beruf: opt(val('s2_beruf')), beginn: opt(val('s2_von')), ende: opt(val('s2_bis')), fachklasse: val('s2_fachklasse'),
+          betrieb: art === 'mit_ausbildungsvertrag' && val('s2_betrieb') ? {name: val('s2_betrieb'), adresse: adresse('s2_')} : undefined
+        },
+        begruendung: {kategorien: kategorien, text: val('s3_text')}
+      };
+    }
+
+    /* Feldnamen der API → Bezeichnung im Formular, für verständliche Fehlermeldungen */
+    var FELDNAMEN = {
+      'schueler.geburtsdatum':'Geburtsdatum', 'schueler.email':'E-Mail-Adresse', 'schueler.adresse.plz':'Postleitzahl', 'schueler.adresse.hausnummer':'Hausnummer',
+      'schueler.adresse.strasse':'Straße', 'schueler.adresse.ort':'Ort', 'sprengelschuleNr':'Schulnummer der Sprengelschule', 'gastschuleNr':'Schulnummer der Gastschule',
+      'schuljahr':'Schuljahr', 'ausbildung.fachklasse':'Fachklasse', 'ausbildung.betrieb':'Ausbildungsbetrieb', 'begruendung.text':'Begründung', 'begruendung.kategorien':'Kategorie der Begründung'
+    };
+
+    function einreichenUeberBackend(){
+      var text = btn.innerHTML;
+      btn.dataset.laeuft = '1'; btn.classList.add('is-disabled'); btn.textContent = 'Wird übermittelt …';
+      function fertig(){ delete btn.dataset.laeuft; btn.innerHTML = text; sync(); }
+      track('Einreichen über Backend gestartet');
+      Backend.post('/antraege', sammleAntrag()).then(function(res){
+        Backend.meinAntrag({aktenzeichen: res.aktenzeichen, schluessel: res.zugangsschluessel});
+        var dateien = Array.prototype.filter.call(document.querySelectorAll('#s3-filelist li'), function(li){ return li._datei; });
+        btn.textContent = dateien.length ? 'Nachweise werden hochgeladen …' : 'Wird übermittelt …';
+        var fehler = [];
+        return dateien.reduce(function(kette, li){
+          return kette.then(function(){
+            var fd = new FormData();
+            fd.append('datei', li._datei, li._datei.name);
+            var art9 = li.querySelector('.art9');
+            fd.append('besondereKategorie', art9 && art9.checked ? 'true' : 'false');
+            return Backend.post('/antraege/' + encodeURIComponent(res.aktenzeichen) + '/dokumente', fd, {'X-Zugangsschluessel': res.zugangsschluessel})
+              .catch(function(e){ fehler.push(li._datei.name + ': ' + e.message); });
+          });
+        }, Promise.resolve()).then(function(){
+          fertig();
+          track('Antrag im Backend angelegt: ' + res.aktenzeichen + (dateien.length ? ', ' + (dateien.length - fehler.length) + '/' + dateien.length + ' Nachweise' : ''));
+          abschliessen(res.aktenzeichen, new Date(res.eingegangenAm));
+          if(fehler.length) toast(fehler.length + ' Nachweis(e) nicht übertragen – bitte im Dashboard erneut hochladen');
+        });
+      }).catch(function(e){
+        fertig();
+        var t = document.getElementById('s4-banner-text');
+        if(e.status === 400 && e.daten && e.daten.fehler){
+          t.textContent = 'Das Backend hat den Antrag nicht angenommen: ' + e.daten.fehler.map(function(f){ return (FELDNAMEN[f.feld] || f.feld) + ' – ' + f.meldung; }).join(' · ');
+          toast('Bitte Angaben prüfen');
+        } else if(e.status){
+          t.textContent = 'Der Antrag wurde nicht übermittelt: ' + e.message;
+          toast('Antrag nicht übermittelt');
+        } else {
+          t.textContent = 'Das Backend ist nicht erreichbar. Ihr Antrag wurde nicht übermittelt – Ihre Angaben bleiben erhalten. Bitte später erneut versuchen.';
+          toast('Backend nicht erreichbar');
+          Backend.pruefen();
+        }
+        document.getElementById('s4-banner').scrollIntoView({behavior:'smooth', block:'center'});
+        track('Einreichen fehlgeschlagen: ' + e.message);
+      });
+    }
+
+    function abschliessen(az, d){
       var pad = function(n){ return String(n).padStart(2,'0'); };
       var monate = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
 
@@ -3778,7 +3968,7 @@ var toast = function(m){ return window.protoToast(m); };
       if(window.dbAktualisieren) window.dbAktualisieren(az);
       track('Antrag verbindlich eingereicht – ' + az);
       show('screen-submitted');
-    });
+    }
   })();
 
 
@@ -3877,6 +4067,56 @@ var toast = function(m){ return window.protoToast(m); };
       document.getElementById('db-unread').textContent = offen + ' ungelesen';
       document.getElementById('db-badge').textContent = offen;
     };
+
+    /* Mit Backend: Stand des eigenen Antrags laden (GET /antraege/{Aktenzeichen}) */
+    function esc(x){ return String(x == null ? '' : x).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+    function datum(iso){ var d = new Date(iso), p = function(n){ return String(n).padStart(2,'0'); }; return p(d.getDate()) + '.' + p(d.getMonth()+1) + '.' + d.getFullYear(); }
+    function zeit(iso){ var d = new Date(iso), p = function(n){ return String(n).padStart(2,'0'); }; return datum(iso) + ', ' + p(d.getHours()) + ':' + p(d.getMinutes()) + ' Uhr'; }
+    function groesse(b){ return b >= 1048576 ? (b/1048576).toFixed(1).replace('.', ',') + ' MB' : Math.max(1, Math.round(b/1024)) + ' KB'; }
+
+    function zeigeStand(st){
+      document.getElementById('db-gast').textContent = st.gastschule;
+      document.getElementById('db-spr').textContent = st.sprengelschule;
+      if(st.ausbildungsberuf) document.getElementById('db-beruf').textContent = st.ausbildungsberuf;
+      document.getElementById('db-sub').textContent = 'Ihr Antrag ' + st.aktenzeichen + ' für das Gastschulverhältnis an der ' + st.gastschule + ' ist ' + (st.status === 'abgeschlossen' ? 'entschieden.' : 'in Bearbeitung.');
+      document.getElementById('db-pill').textContent = 'Antrag eingereicht (' + datum(st.eingegangenAm) + ') · Schuljahr ' + st.schuljahr;
+      document.getElementById('db-d1').textContent = datum(st.eingegangenAm);
+      document.getElementById('db-d2').textContent = datum(st.eingegangenAm);
+      var akt = st.fortschritt.filter(function(f){ return f.aktuell; })[0];
+      if(akt) document.getElementById('db-stepinfo').textContent = 'Schritt ' + akt.schritt + ' von 4: ' + akt.titel;
+      document.querySelectorAll('#screen-profile .tiles .tile').forEach(function(t, i){
+        var f = st.fortschritt[i]; if(!f) return;
+        t.classList.toggle('done', !!f.erledigtAm); t.classList.toggle('now', f.aktuell);
+      });
+
+      var liste = document.getElementById('db-msglist');
+      liste.innerHTML = st.nachrichten.map(function(m, i){
+        return '<li' + (i === 0 ? ' class="unread"' : '') + '><div class="msgtop"><strong>' + esc(m.titel) + '</strong><span class="msgtime">' + zeit(m.zeitpunkt) + '</span></div><p>' + esc(m.text) + '</p></li>';
+      }).join('');
+      var offen = liste.querySelectorAll('li.unread').length;
+      document.getElementById('db-unread').textContent = offen + ' ungelesen';
+      document.getElementById('db-badge').textContent = offen;
+
+      var docs = document.querySelector('#db-dokumente .doclist');
+      if(docs) docs.innerHTML = st.dokumente.length
+        ? st.dokumente.map(function(d){ return '<li><span>' + esc(d.dateiname) + '</span><span class="dbsmall">' + groesse(d.groesseBytes) + '</span></li>'; }).join('')
+        : '<li><span>Keine Nachweise hochgeladen</span></li>';
+    }
+
+    function ladeStand(){
+      var a = Backend.meinAntrag();
+      if(!a || !Backend.verbunden()) return;
+      Backend.get('/antraege/' + encodeURIComponent(a.aktenzeichen), {'X-Zugangsschluessel': a.schluessel})
+        .then(function(st){ zeigeStand(st); track('Dashboard: Stand aus Backend geladen (' + a.aktenzeichen + ')'); })
+        .catch(function(e){
+          // 404: Datenbank wurde zurückgesetzt o. Ä. – gemerkten Antrag vergessen
+          if(e.status === 404) Backend.meinAntrag(null);
+          track('Dashboard: Stand nicht geladen – ' + e.message);
+        });
+    }
+    var profil = document.getElementById('screen-profile');
+    new MutationObserver(function(){ if(profil.classList.contains('active')) ladeStand(); }).observe(profil, {attributes: true, attributeFilter: ['class']});
+    Backend.bereit.then(function(){ if(profil.classList.contains('active')) ladeStand(); });
   })();
 
 </script>
